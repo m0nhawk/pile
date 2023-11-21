@@ -1,0 +1,73 @@
+version: '2'
+
+# Settings and configurations that are common for all containers
+x-opensearch-common: &opensearch-common
+  image: opensearchproject/opensearch:latest
+  environment: &env
+    cluster.name: os-docker-cluster
+    cluster.initial_master_nodes: os00
+    bootstrap.memory_lock: "true"
+    OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+    nofile:
+      soft: 65536
+      hard: 65536
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://os00:9200/_cluster/health?wait_for_status=green&timeout=1s"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+services:
+  os00:
+    <<: *opensearch-common
+    container_name: "os00"
+    environment:
+      <<: *env
+      node.name: os00
+      discovery.seed_hosts: os01,os02
+    volumes:
+      - os-volume-00:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+
+  os01:
+    <<: *opensearch-common
+    container_name: "os01"
+    environment:
+      <<: *env
+      node.name: os01
+      discovery.seed_hosts: os00,os02
+    volumes:
+      - os-volume-01:/usr/share/opensearch/data
+
+  os02:
+    <<: *opensearch-common
+    container_name: "os02"
+    environment:
+      <<: *env
+      node.name: os02
+      discovery.seed_hosts: os00,os01
+    volumes:
+      - os-volume-02:/usr/share/opensearch/data
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: dashboards
+    environment:
+      OPENSEARCH_HOSTS: https://os00:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - os00
+      - os01
+      - os02
+
+volumes:
+  os-volume-00:
+  os-volume-01:
+  os-volume-02:

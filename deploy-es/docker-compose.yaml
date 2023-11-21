@@ -1,0 +1,73 @@
+version: '2'
+
+# Settings and configurations that are common for all containers
+x-elasticsearch-common: &elasticsearch-common
+  image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-8.2.3}
+  environment: &env
+    cluster.name: es-docker-cluster
+    cluster.initial_master_nodes: es01
+    bootstrap.memory_lock: "true"
+    xpack.security.enabled: "false"
+    xpack.security.http.ssl.enabled: "false"
+    xpack.security.transport.ssl.enabled: "false"
+    ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://es00:9200/_cluster/health?wait_for_status=green&timeout=1s"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+services:
+  es00:
+    <<: *elasticsearch-common
+    container_name: "es00"
+    environment:
+      <<: *env
+      node.name: es00
+      discovery.seed_hosts: es01,es02
+    volumes:
+      - es-volume-00:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+  es01:
+    <<: *elasticsearch-common
+    container_name: "es01"
+    environment:
+      <<: *env
+      node.name: es01
+      discovery.seed_hosts: es00,es02
+    volumes:
+      - es-volume-01:/usr/share/elasticsearch/data
+
+  es02:
+    <<: *elasticsearch-common
+    container_name: "es02"
+    environment:
+      <<: *env
+      node.name: es02
+      discovery.seed_hosts: es00,es01
+    volumes:
+      - es-volume-02:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-8.2.3}
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://es00:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - es00
+      - es01
+      - es02
+
+volumes:
+  es-volume-00:
+  es-volume-01:
+  es-volume-02:
