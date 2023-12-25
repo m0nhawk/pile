@@ -24,6 +24,7 @@
           pkgs.uwsgi
           pkgs.python39Packages.virtualenv
           pkgs.poetry
+          pkgs.pyright
         ];
       };
       app = pkgs.poetry2nix.mkPoetryApplication {
