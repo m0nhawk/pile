@@ -18,6 +18,7 @@
         inherit system name src;
         buildInputs = [ 
           pkgs.zig
+          pkgs.zls
         ];
         buildPhase = "
           export XDG_CACHE_HOME=$(mktemp -d)
